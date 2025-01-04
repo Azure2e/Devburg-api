@@ -1,50 +1,32 @@
-"use strict";
+import Sequelize from "sequelize";
+import mongoose from "mongoose";
 
-const fs = require("fs");
-const path = require("path");
-const Sequelize = require("sequelize");
-const process = require("process");
-const basename = path.basename(__filename);
-const env = process.env.NODE_ENV || "development";
-const config = require(__dirname + "/../config/config.json")[env];
-const db = {};
+import Product from "../app/models/Product";
+import User from "../app/models/User";
+import Category from "../app/models/Category";
 
-let sequelize;
-if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
-} else {
-  sequelize = new Sequelize(
-    config.database,
-    config.username,
-    config.password,
-    config,
-  );
+import configDatabase from "../config/database";
+
+const models = [User, Product, Category];
+
+class Database {
+  constructor() {
+    this.init();
+    this.mongo();
+  }
+
+  init() {
+    this.connection = new Sequelize(configDatabase);
+    models
+      .map((model) => model.init(this.connection))
+      .map(
+        (model) => model.associate && model.associate(this.connection.models),
+      );
+  }
+
+  mongo() {
+    this.mongoConnection = mongoose.connect(process.env.MONGO_URL);
+  }
 }
 
-fs.readdirSync(__dirname)
-  .filter((file) => {
-    return (
-      file.indexOf(".") !== 0 &&
-      file !== basename &&
-      file.slice(-3) === ".js" &&
-      file.indexOf(".test.js") === -1
-    );
-  })
-  .forEach((file) => {
-    const model = require(path.join(__dirname, file))(
-      sequelize,
-      Sequelize.DataTypes,
-    );
-    db[model.name] = model;
-  });
-
-Object.keys(db).forEach((modelName) => {
-  if (db[modelName].associate) {
-    db[modelName].associate(db);
-  }
-});
-
-db.sequelize = sequelize;
-db.Sequelize = Sequelize;
-
-module.exports = db;
+export default new Database();
